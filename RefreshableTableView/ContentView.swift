@@ -194,16 +194,20 @@ class MyUITableViewController: UIViewController, UITableViewDelegate {
 struct MyTableView: UIViewControllerRepresentable {
     typealias UIViewControllerType = MyUITableViewController
     
-    var didTriggerRefreshIntention: () -> ()
-    var viewRefreshing: Bool
+    @Binding var viewRefreshing: Bool
     
-    init(didTriggerRefreshIntention: @escaping () -> (), viewRefreshing: Bool) {
-        self.didTriggerRefreshIntention = didTriggerRefreshIntention
-        self.viewRefreshing = viewRefreshing
+    init(viewRefreshing: Binding<Bool>) {
+        self._viewRefreshing = viewRefreshing
     }
     
     func makeUIViewController(context: Context) -> UIViewControllerType {
-        let viewController = MyUITableViewController(didTriggerRefreshIntention: didTriggerRefreshIntention)
+        let viewController = MyUITableViewController(didTriggerRefreshIntention: {
+            viewRefreshing = true
+            Task {
+                try! await Task.sleep(nanoseconds: 3_000_000_000)
+                viewRefreshing = false
+            }
+        })
         return viewController
     }
     
@@ -221,13 +225,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            MyTableView(didTriggerRefreshIntention: {
-                viewRefreshing = true
-                Task {
-                    try! await Task.sleep(nanoseconds: 3_000_000_000)
-                    viewRefreshing = false
-                }
-            }, viewRefreshing: viewRefreshing)
+            MyTableView(viewRefreshing: $viewRefreshing)
                 .ignoresSafeArea()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.visible, for: .navigationBar)
